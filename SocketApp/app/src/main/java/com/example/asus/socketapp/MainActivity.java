@@ -2,6 +2,7 @@ package com.example.asus.socketapp;
 
 import android.os.AsyncTask;
 import android.os.Handler;
+import android.os.Message;
 import android.os.StrictMode;
 import android.support.design.widget.TextInputLayout;
 import android.support.v7.app.AppCompatActivity;
@@ -24,6 +25,9 @@ import java.net.UnknownHostException;
 public class MainActivity extends AppCompatActivity {
 
     private TextInputLayout mText;
+    private TextInputLayout mIP;
+    private TextInputLayout mPort;
+    private Button mConnectBtn;
     private Button mBtn;
     private DataInputStream input;
     private DataOutputStream out;
@@ -40,6 +44,10 @@ public class MainActivity extends AppCompatActivity {
         StrictMode.setThreadPolicy(policy);
 
         mText = (TextInputLayout) findViewById(R.id.main_text);
+        mIP = (TextInputLayout) findViewById(R.id.main_ip);
+        mPort = (TextInputLayout) findViewById(R.id.main_port);
+
+        mConnectBtn = (Button) findViewById(R.id.main_connect_btn);
         mBtn = (Button)findViewById(R.id.main_button);
 
     }
@@ -47,6 +55,54 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
+
+        mConnectBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                final String ipAddress = mIP.getEditText().getText().toString();
+                String temp = mPort.getEditText().getText().toString();
+                final int port = Integer.parseInt(temp);
+
+                final Handler h = new Handler() {
+                    public void handleMessage(Message msg) {
+                        Bundle bundle = msg.getData();
+                        String text = bundle.getString("key");
+
+                        if (text.equals("c")) {
+                            Toast.makeText(MainActivity.this, "Connected", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(MainActivity.this, text, Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                };
+
+                Thread t1 = new Thread() {
+                    @Override
+                    public void run() {
+
+                        Message message = h.obtainMessage();
+
+                        Bundle bundle = new Bundle();
+
+                        try {
+                            socket = new Socket(ipAddress, port);  //connect to server
+
+                            bundle.putString("key", "c");
+                            message.setData(bundle);
+                            h.sendMessage(message);
+
+                        } catch (Exception e) {
+                            bundle.putString("key", e.toString());
+                            message.setData(bundle);
+                            h.sendMessage(message);
+                        }
+                    }
+                };
+
+                t1.start();
+
+            }
+        });
 
         mBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -64,13 +120,13 @@ public class MainActivity extends AppCompatActivity {
 
         try {
 
-            socket = new Socket("192.168.2.12", 6000);  //connect to server
             printwriter = new PrintWriter(socket.getOutputStream(),true);
             printwriter.write(line);  //write the message to output stream
 
             printwriter.flush();
             printwriter.close();
-            socket.close();   //closing the connection
+            //if(line.equals("Over"))
+                socket.close();   //closing the connection
 
         } catch (Exception e) {
             Toast.makeText(MainActivity.this, e.toString(),Toast.LENGTH_SHORT).show();
